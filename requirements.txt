@@ -1,3 +1,2 @@
 # O pacote SICAR é distribuído neste repositório GitHub.
 git+https://github.com/urbanogilson/SICAR.git#egg=SICAR
-logutil
