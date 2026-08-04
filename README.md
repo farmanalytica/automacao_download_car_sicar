@@ -36,6 +36,20 @@ Cadastro Ambiental Rural, e `logutil`, usado para registrar o andamento e as
 falhas dos downloads. O `SICAR` é instalado diretamente do repositório GitHub
 do projeto, pois não é instalado a partir de um pacote publicado no PyPI.
 
+## Sobre o pacote SICAR
+
+Este projeto depende do pacote `SICAR`, instalado a partir do repositório
+oficial do autor em [https://github.com/urbanogilson/SICAR#egg=SICAR](https://github.com/urbanogilson/SICAR#egg=SICAR).
+
+O download dos arquivos do CAR/SICAR é realizado por meio dessa biblioteca,
+que acessa o serviço do governo e precisa lidar com o desafio de captcha da
+plataforma. Neste repositório, a automação resolve esse captcha usando OCR.
+
+> Importante: se o SICAR alterar o método de captcha, ou se houver qualquer
+> mudança na forma como o processo de autenticação e download é realizado, o
+> fluxo automatizado pode falhar facilmente. Isso torna a solução dependente da
+> estabilidade do comportamento do pacote e da página do SICAR.
+
 ## Uso
 
 Execute o downloader com:
