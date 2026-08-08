@@ -1,8 +1,9 @@
 # Automação de download de dados do CAR/SICAR
 
-Script para baixar, de forma automatizada, os arquivos ZIP das camadas do
-Cadastro Ambiental Rural (CAR) disponibilizados pelo SICAR. Os arquivos são
-organizados automaticamente em pastas separadas por camada.
+Scripts para baixar, de forma automatizada, os arquivos ZIP das camadas do
+Cadastro Ambiental Rural (CAR) disponibilizados pelo SICAR — seja de forma
+pontual por camada/estado (`downloader.py`), seja o conjunto completo em
+loop até terminar (`download_until_done.py`).
 
 ## Requisitos
 
@@ -31,10 +32,15 @@ Instale as dependências do projeto com:
 python -m pip install -r requirements.txt
 ```
 
-As principais dependências são `SICAR`, usado para acessar os dados do
-Cadastro Ambiental Rural, e `logutil`, usado para registrar o andamento e as
-falhas dos downloads. O `SICAR` é instalado diretamente do repositório GitHub
+A principal dependência é o pacote `SICAR`, usado para acessar os dados do
+Cadastro Ambiental Rural. Ele é instalado diretamente do repositório GitHub
 do projeto, pois não é instalado a partir de um pacote publicado no PyPI.
+
+Para a resolução automática do captcha por OCR também é necessário ter o
+[Tesseract OCR](https://github.com/tesseract-ocr/tesseract) instalado e
+disponível no PATH (no Windows, o caminho padrão
+`C:\Program Files\Tesseract-OCR` é detectado automaticamente pelo
+`download_until_done.py`).
 
 ## Sobre o pacote SICAR
 
@@ -50,7 +56,14 @@ plataforma. Neste repositório, a automação resolve esse captcha usando OCR.
 > fluxo automatizado pode falhar facilmente. Isso torna a solução dependente da
 > estabilidade do comportamento do pacote e da página do SICAR.
 
-## Uso
+## Scripts disponíveis
+
+| Script | Uso recomendado |
+| --- | --- |
+| [downloader.py](downloader.py) | Baixar uma camada (ou todas) de forma pontual, com filtro opcional por estado. |
+| [download_until_done.py](download_until_done.py) | Baixar **todas** as combinações de estado × camada em loop, retomando automaticamente até completar o conjunto. |
+
+## Uso do downloader.py
 
 Execute o downloader com:
 
@@ -81,7 +94,7 @@ python downloader.py --layer vegetation
 python downloader.py --layer all --state MT
 ```
 
-## Camadas disponíveis
+### Camadas disponíveis
 
 | Valor de `--layer` | Camada |
 | --- | --- |
@@ -96,7 +109,7 @@ python downloader.py --layer all --state MT
 | `administrative` | Servidão administrativa |
 | `all` | Todas as camadas acima |
 
-## Estrutura de saída
+### Estrutura de saída
 
 Os downloads são salvos na pasta `source/`, em um diretório específico para
 cada camada:
@@ -118,7 +131,7 @@ Os arquivos ZIP encontrados após cada download são movidos para a pasta da
 camada correspondente. A pasta `source/` é criada automaticamente quando
 necessário.
 
-## Comportamento do script
+### Comportamento
 
 - tenta inicializar o cliente SICAR até cinco vezes;
 - consulta as datas de disponibilização retornadas pelo SICAR;
@@ -128,6 +141,56 @@ necessário.
 	serviço;
 - registra sucessos e falhas durante o processamento;
 - continua o processamento dos demais estados quando um download falha.
+
+## Uso do download_until_done.py
+
+Alternativa ao `downloader.py` para baixar o conjunto completo: todos os
+estados retornados pelo SICAR × todas as 9 camadas (27 estados = 243 ZIPs).
+O script roda em passes sucessivos até que todos os arquivos estejam
+presentes e válidos.
+
+```bash
+# Rodar até completar todos os downloads
+python download_until_done.py
+
+# Limitar a 10 passes (encerra mesmo se incompleto)
+python download_until_done.py --max-passes 10
+```
+
+### Comportamento
+
+- um ZIP só conta como concluído se passar na validação `zipfile.is_zipfile`;
+	arquivos truncados ou corrompidos são removidos e baixados novamente;
+- totalmente retomável: pode ser interrompido a qualquer momento (Ctrl+C) e,
+	ao reexecutar, tenta apenas o que ainda está faltando;
+- pausa curta após cada download e pausa maior após falhas;
+- após 5 falhas consecutivas, reconstrói a sessão do SICAR e aguarda alguns
+	minutos (proteção contra bloqueio/captcha do servidor);
+- entre passes sem progresso, aplica backoff exponencial (60s até 15min),
+	reiniciado sempre que um passe baixa algo;
+- exibe progresso com percentual, tempo decorrido e estimativa de conclusão
+	(ETA);
+- no Windows, adiciona automaticamente `C:\Program Files\Tesseract-OCR` ao
+	PATH caso o binário do Tesseract não seja encontrado.
+
+### Estrutura de saída
+
+Mesmo layout de pastas por camada do `downloader.py`, com os ZIPs nomeados
+como `{ESTADO}_{CAMADA}.zip` dentro de cada pasta:
+
+```text
+source/
+├── area_overlay/
+│   ├── AC_AREA_IMOVEL.zip
+│   ├── ...
+│   └── TO_AREA_IMOVEL.zip
+├── app_overlay/
+│   └── ...
+└── ...
+```
+
+ZIPs baixados por versões anteriores do script no layout plano (direto em
+`source/`) são movidos automaticamente para as subpastas na inicialização.
 
 ## Observações
 
